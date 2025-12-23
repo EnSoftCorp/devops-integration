@@ -1,0 +1,35 @@
+trigger:
+  branches:
+    include:
+      - "*"   # all branches
+
+pool:
+  name: Default   # your self-hosted Windows agent 
+
+stages:
+- stage: peer_review_file_generation
+  displayName: "Peer Review File Generation"
+
+  jobs:
+  - job: SimDiff_PeerReview
+    displayName: "Generate SimDiff Peer Review File"
+
+    steps:
+    - checkout: self
+      fetchDepth: 2 #fetch previous commit
+
+    # ============ Set up DiffTool ===============
+    - powershell: |
+        git config --local difftool.simdiff.cmd '\"C:/Program Files/EnSoft/SimDiff Automation/sd4.exe\" -l \"$LOCAL\" -r \"$REMOTE\" -export aero_radmod_peerreview.html'
+      displayName: "Prepare SimDiff command (Powershell)"
+
+    # ============ Invoke SimDiff to Produce a Peer Review File ===============
+    - powershell: |
+        echo Comparing with SimDiff...
+        git difftool -y -t simdiff HEAD~1 HEAD .\aero_radmod.slx
+      displayName: "Run SimDiff comparison (Powershell)"
+
+    # ============ Publish Artifact ===============
+    - publish: $(System.DefaultWorkingDirectory)/aero_radmod_peerreview.html
+      artifact: aero_radmod_peerreview.html
+      displayName: "Publish SimDiff Peer Review File"
